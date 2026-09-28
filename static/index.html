@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign &amp; Send</title>
+<meta name="description" content="Receive a document, print it, sign it by hand, scan it and save it as a clean PDF.">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sign &amp; Send">
+<link rel="stylesheet" href="/static/styles.css?v=9">
+</head>
+<body>
+
+<header>
+  <div class="logo">✍️</div>
+  <div class="head-txt">
+    <h1>Sign &amp; Send</h1>
+    <p class="sub">Receive · Print · Sign · Scan · Save</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= STEP 1 ================= -->
+  <section class="card" id="step1">
+    <h2><span class="num">1</span> Receive the document</h2>
+    <p class="hint">Upload the PDF or image someone sent you, print it and sign it by hand.</p>
+
+    <div id="dropzone" class="dropzone">
+      <div class="dz-icon">📄</div>
+      <div><b>Drag a file here</b> or
+        <label class="linklike">browse files<input id="incomingFile" type="file" accept="application/pdf,image/*" hidden></label>
+      </div>
+      <div class="dz-note">PDF, PNG or JPG · up to 30 MB</div>
+    </div>
+
+    <div id="incomingCard" class="file-card" hidden>
+      <div class="fc-icon">📄</div>
+      <div class="fc-info">
+        <b id="incName"></b>
+        <span id="incSize"></span>
+      </div>
+      <div class="fc-actions">
+        <button class="btn" id="btnPrint">🖨️ Print</button>
+        <a class="btn ghost" id="btnOpenIncoming" target="_blank" rel="noopener">Open</a>
+        <button class="btn danger-ghost" id="btnRemoveIncoming">✕ Remove</button>
+      </div>
+    </div>
+    <iframe id="printFrame" title="print" hidden></iframe>
+  </section>
+
+  <!-- ================= STEP 2 ================= -->
+  <section class="card" id="step2">
+    <h2><span class="num">2</span> Sign &amp; scan</h2>
+    <p class="hint">Photograph each signed page separately — everything is merged into one PDF.</p>
+
+    <div class="cam-row">
+      <button class="btn" id="btnCam">📷 Start camera</button>
+      <button class="btn ghost" id="btnStopCam" hidden>⏹ Stop camera</button>
+      <label class="btn ghost">🖼️ Take photo / pick images
+        <input id="pickImage" type="file" accept="image/*" hidden multiple>
+      </label>
+      <label class="btn ghost">📁 Add file from computer
+        <input id="pickFile" type="file" accept="application/pdf,image/*" hidden multiple>
+      </label>
+      <button class="btn ghost" id="btnSample">🧪 Try a sample page</button>
+    </div>
+
+    <div id="camWrap" class="cam-wrap" hidden>
+      <video id="video" autoplay playsinline muted></video>
+      <div class="cam-actions">
+        <button class="btn primary big" id="btnShoot">📸 Capture</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAGES ================= -->
+  <section class="card" id="pagesCard">
+    <div class="sec-head">
+      <h2><span class="num">3</span> Pages <span id="pageCount" class="badge">0</span></h2>
+      <button class="btn danger-ghost small" id="btnClearPages">Clear all</button>
+    </div>
+    <div id="pagesGrid" class="pages"></div>
+    <p class="empty" id="pagesEmpty">No pages yet — scan your document in step 2.</p>
+  </section>
+
+  <!-- ================= STEP 4 ================= -->
+  <section class="card" id="step4">
+    <h2><span class="num">4</span> Save</h2>
+    <p class="hint">All pages are merged into one PDF, in the order shown above.</p>
+
+    <div class="form">
+      <label id="pinRow" hidden>Access code (PIN)
+        <input id="pin" type="password" autocomplete="off" placeholder="PIN">
+      </label>
+    </div>
+
+    <div class="send-row">
+      <button class="btn primary big" id="btnDownload" disabled>⬇️ Download PDF</button>
+    </div>
+    <p id="dlHelp" class="hint" hidden></p>
+  </section>
+
+</main>
+
+<footer>
+  Works on phones and desktops · photos are processed in your browser · the PDF is built on the server.
+  <br><b id="ver">v9</b> — if you don't see v9 here, you're viewing a stale copy: refresh the page.
+</footer>
+
+<!-- ================= EDITOR (modal) ================= -->
+<div id="editorOverlay" class="overlay" hidden>
+  <div class="editor">
+    <div class="ed-head">
+      <b>Edit page <span id="edQueue" class="muted"></span></b>
+      <button class="icon-btn" id="edClose" title="Close">✕</button>
+    </div>
+
+    <div class="ed-body">
+      <div class="ed-canvas-wrap" id="edWrap">
+        <canvas id="edCanvas"></canvas>
+        <div id="cropRect" class="crop-rect" hidden></div>
+        <div id="cropHint" class="crop-hint" hidden>Drag across the page to mark the crop area</div>
+      </div>
+
+      <div class="ed-controls">
+        <div class="row wrap">
+          <button class="btn ghost small" id="btnRotL">↺</button>
+          <button class="btn ghost small" id="btnRotR">↻</button>
+          <button class="btn ghost small" id="btnCropMode">✂️ Crop</button>
+          <button class="btn small" id="btnCropApply" hidden>✂️ Apply crop</button>
+        </div>
+
+        <label class="fld">Look
+          <select id="filterMode">
+            <option value="enhanced" selected>Enhanced (recommended)</option>
+            <option value="magic">Color — magic (white background)</option>
+            <option value="gray">Grayscale</option>
+            <option value="whiteboard">Whiteboard — extra white</option>
+            <option value="bw">Black &amp; white — scan</option>
+            <option value="original">Original photo</option>
+          </select>
+        </label>
+
+        <label class="fld">Brightness <span id="brVal" class="muted">0</span>
+          <input type="range" id="brRange" min="-60" max="60" value="0">
+        </label>
+        <label class="fld">Contrast <span id="ctVal" class="muted">0</span>
+          <input type="range" id="ctRange" min="-60" max="60" value="0">
+        </label>
+
+        <button class="btn primary big" id="btnAddPage">➕ Add page</button>
+        <p class="hint small-hint">Tip: “Black &amp; white — scan” gives a true scanner look and the smallest file.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/static/vendor/pdf.min.js"></script>
+<script src="/static/app.js?v=9"></script>
+</body>
+</html>
